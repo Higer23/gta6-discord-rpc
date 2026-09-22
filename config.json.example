@@ -1,0 +1,22 @@
+{
+  "client_id": "1552008336302669934",
+  "played_time": {"hours": 12, "minutes": 34, "seconds": 27},
+  "interactive_setup": true,
+  "update_interval": 1.0,
+  "activity_rotation": {"enabled": true, "min_seconds": 60, "max_seconds": 120},
+  "assets": {
+    "large_image": "gta6_brl",
+    "large_text": "Grand Theft Auto VI",
+    "small_image": null,
+    "small_text": "Rockstar Games"
+  },
+  "buttons": [
+    {"label": "Rockstar Games", "url": "https://www.rockstargames.com/VI"},
+    {"label": "GTA VI Trailer", "url": "https://www.youtube.com/watch?v=QdBZY2fkU-0"}
+  ],
+  "terminal": {"quiet": false},
+  "logging": {"level": "INFO", "file": "logs/gta6_rpc.log", "max_bytes": 1048576, "backup_count": 3},
+  "activities": ["Exploring Vice City", "Driving around Vice City", "Cruising through the city", "Exploring Leonida", "Free roaming", "Checking out a new area", "Taking a drive through the city", "Exploring the countryside", "Looking for a new car", "Heading across the city", "Roaming around Leonida", "Exploring Vice Beach", "Driving around at night"],
+  "locations": ["Vice City", "Leonida", "Downtown", "Vice Beach", "Little Havana", "Port Gellhorn", "Grassrivers", "The Keys"],
+  "details_suffixes": ["Free Roam", "Exploration", "Driving", "Open World"]
+}
