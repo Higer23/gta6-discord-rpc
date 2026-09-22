@@ -1,88 +1,33 @@
-"""Configuration loading and first-run setup."""
-
+"""Configuration loading, atomic saving, and change detection."""
 from __future__ import annotations
-
-import json
+import json,os,tempfile
 from pathlib import Path
 from typing import Any
-
-from .models import AppConfig, AssetConfig, ButtonConfig, LoggingConfig, PlayedTime, RotationConfig, TerminalConfig
-
-BASE_DIR = Path(__file__).resolve().parents[2]
-CONFIG_PATH = BASE_DIR / "config.json"
-EXAMPLE_PATH = BASE_DIR / "config.json.example"
-
-
-def _duration_from_parts(data: dict[str, Any]) -> int:
-    try:
-        hours = int(data.get("hours", 0))
-        minutes = int(data.get("minutes", 0))
-        seconds = int(data.get("seconds", 0))
-    except (TypeError, ValueError) as exc:
-        raise ValueError("played_time values must be integers.") from exc
-    if min(hours, minutes, seconds) < 0:
-        raise ValueError("played_time values cannot be negative.")
-    return hours * 3600 + minutes * 60 + seconds
-
-
-def load_raw_config(path: Path = CONFIG_PATH) -> dict[str, Any]:
-    if not path.exists():
-        raise FileNotFoundError(path)
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Configuration JSON is invalid at line {exc.lineno}, column {exc.colno}.") from exc
-    if not isinstance(data, dict):
-        raise ValueError("Configuration root must be a JSON object.")
+from .models import AppConfig,PlayedTime,RotationConfig,AssetConfig,ButtonConfig,TerminalConfig,LoggingConfig
+BASE_DIR=Path(__file__).resolve().parents[2]; CONFIG_PATH=BASE_DIR/"config.json"; EXAMPLE_PATH=BASE_DIR/"config.json.example"
+def _duration(d:dict[str,Any])->int:
+    try: h,m,s=int(d.get("hours",0)),int(d.get("minutes",0)),int(d.get("seconds",0))
+    except (TypeError,ValueError) as ex: raise ValueError("played_time values must be integers.") from ex
+    if min(h,m,s)<0 or m>=60 or s>=60: raise ValueError("played_time has invalid hours/minutes/seconds.")
+    return h*3600+m*60+s
+def load_raw_config(path:Path=CONFIG_PATH)->dict[str,Any]:
+    try: data=json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError: raise
+    except json.JSONDecodeError as ex: raise ValueError(f"Configuration JSON invalid at line {ex.lineno}, column {ex.colno}.") from ex
+    if not isinstance(data,dict): raise ValueError("Configuration root must be a JSON object.")
     return data
-
-
-def save_default_config(path: Path = CONFIG_PATH) -> None:
-    if path.exists():
-        return
-    path.write_text(EXAMPLE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
-
-
-def build_config(data: dict[str, Any]) -> AppConfig:
-    played = data.get("played_time", {})
-    rotation = data.get("activity_rotation", {})
-    assets = data.get("assets", {})
-    terminal = data.get("terminal", {})
-    logging_data = data.get("logging", {})
-    buttons = tuple(
-        ButtonConfig(str(item.get("label", "")), str(item.get("url", "")))
-        for item in data.get("buttons", [])
-        if isinstance(item, dict)
-    )
-    return AppConfig(
-        client_id=str(data.get("client_id", "")).strip(),
-        played_time=PlayedTime(_duration_from_parts(played)),
-        interactive_setup=bool(data.get("interactive_setup", True)),
-        update_interval=float(data.get("update_interval", 1.0)),
-        rotation=RotationConfig(
-            enabled=bool(rotation.get("enabled", True)),
-            min_seconds=float(rotation.get("min_seconds", 60)),
-            max_seconds=float(rotation.get("max_seconds", 120)),
-        ),
-        assets=AssetConfig(
-            large_image=str(assets.get("large_image", "")).strip(),
-            large_text=str(assets.get("large_text", "")),
-            small_image=str(assets["small_image"]).strip() if assets.get("small_image") else None,
-            small_text=str(assets.get("small_text", "")),
-        ),
-        buttons=buttons,
-        terminal=TerminalConfig(quiet=bool(terminal.get("quiet", False))),
-        logging=LoggingConfig(
-            level=str(logging_data.get("level", "INFO")).upper(),
-            file=str(logging_data.get("file", "logs/gta6_rpc.log")),
-            max_bytes=int(logging_data.get("max_bytes", 1_048_576)),
-            backup_count=int(logging_data.get("backup_count", 3)),
-        ),
-        activities=tuple(str(x).strip() for x in data.get("activities", [])),
-        locations=tuple(str(x).strip() for x in data.get("locations", [])),
-        details_suffixes=tuple(str(x).strip() for x in data.get("details_suffixes", [])),
-    )
-
-
-def load_config(path: Path = CONFIG_PATH) -> AppConfig:
-    return build_config(load_raw_config(path))
+def build_config(d:dict[str,Any])->AppConfig:
+    pt=d.get("played_time",{}); rot=d.get("activity_rotation",{}); a=d.get("assets",{}); t=d.get("terminal",{}); l=d.get("logging",{})
+    bs=tuple(ButtonConfig(str(x.get("label","")),str(x.get("url",""))) for x in d.get("buttons",[]) if isinstance(x,dict))
+    return AppConfig(str(d.get("client_id","")).strip(),PlayedTime(_duration(pt)),bool(d.get("interactive_setup",True)),float(d.get("update_interval",1)),RotationConfig(bool(rot.get("enabled",True)),float(rot.get("min_seconds",60)),float(rot.get("max_seconds",120))),AssetConfig(str(a.get("large_image","")).strip(),str(a.get("large_text","")),str(a["small_image"]).strip() if a.get("small_image") else None,str(a.get("small_text",""))),bs,TerminalConfig(str(t.get("mode","normal")).lower(),float(t.get("refresh_hz",1))),LoggingConfig(str(l.get("level","INFO")).upper(),str(l.get("file","logs/higer_rpc.log")),int(l.get("max_bytes",1048576)),int(l.get("backup_count",3))),tuple(str(x).strip() for x in d.get("activities",[])),tuple(str(x).strip() for x in d.get("locations",[])),tuple(str(x).strip() for x in d.get("details_suffixes",[])),bool(d.get("config_reload",True)),float(d.get("config_reload_interval",2)))
+def load_config(path:Path=CONFIG_PATH)->AppConfig: return build_config(load_raw_config(path))
+def config_mtime_ns(path:Path=CONFIG_PATH)->int:
+    try:return path.stat().st_mtime_ns
+    except FileNotFoundError:return 0
+def atomic_write_json(path:Path,data:dict[str,Any])->None:
+    path.parent.mkdir(parents=True,exist_ok=True); fd,tmp=tempfile.mkstemp(prefix=".higer-",suffix=".json",dir=path.parent)
+    try:
+        with os.fdopen(fd,"w",encoding="utf-8") as f: json.dump(data,f,indent=2); f.write("\n"); f.flush(); os.fsync(f.fileno())
+        os.replace(tmp,path)
+    finally:
+        if os.path.exists(tmp): os.unlink(tmp)

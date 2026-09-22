@@ -1,29 +1,11 @@
-"""Application logging configuration."""
-
+"""Rotating HIGER logging."""
 from __future__ import annotations
-
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-
 from .models import LoggingConfig
-
-
-def configure_logging(config: LoggingConfig) -> None:
-    path = Path(config.file)
-    if not path.is_absolute():
-        path = Path.cwd() / path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    logger = logging.getLogger()
-    logger.setLevel(getattr(logging, config.level, logging.INFO))
-    if any(
-        isinstance(handler, RotatingFileHandler)
-        and Path(getattr(handler, "baseFilename", "")) == path.resolve()
-        for handler in logger.handlers
-    ):
-        return
-    handler = RotatingFileHandler(
-        path, maxBytes=config.max_bytes, backupCount=config.backup_count, encoding="utf-8"
-    )
-    handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s"))
-    logger.addHandler(handler)
+def configure_logging(c:LoggingConfig)->logging.Logger:
+ p=Path(c.file);p=p if p.is_absolute() else Path.cwd()/p;p.parent.mkdir(parents=True,exist_ok=True);root=logging.getLogger("higer_rpc");root.setLevel(getattr(logging,c.level,logging.INFO))
+ if not root.handlers:
+  h=RotatingFileHandler(p,maxBytes=c.max_bytes,backupCount=c.backup_count,encoding="utf-8");h.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s"));root.addHandler(h)
+ return root

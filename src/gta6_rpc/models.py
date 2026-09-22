@@ -1,25 +1,19 @@
-"""Domain models used by the application."""
-
+"""Immutable configuration and runtime models for HIGER RPC."""
 from __future__ import annotations
-
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-
 
 @dataclass(frozen=True)
 class PlayedTime:
     total_seconds: int
     def __post_init__(self) -> None:
-        if self.total_seconds < 0:
-            raise ValueError("Played time cannot be negative.")
-
+        if self.total_seconds < 0: raise ValueError("Played time cannot be negative.")
 
 @dataclass(frozen=True)
 class RotationConfig:
     enabled: bool = True
     min_seconds: float = 60.0
     max_seconds: float = 120.0
-
 
 @dataclass(frozen=True)
 class AssetConfig:
@@ -28,25 +22,22 @@ class AssetConfig:
     small_image: str | None = None
     small_text: str = ""
 
-
 @dataclass(frozen=True)
 class ButtonConfig:
     label: str
     url: str
 
-
 @dataclass(frozen=True)
 class LoggingConfig:
     level: str = "INFO"
-    file: str = "logs/gta6_rpc.log"
+    file: str = "logs/higer_rpc.log"
     max_bytes: int = 1_048_576
     backup_count: int = 3
 
-
 @dataclass(frozen=True)
 class TerminalConfig:
-    quiet: bool = False
-
+    mode: str = "normal"
+    refresh_hz: float = 1.0
 
 @dataclass(frozen=True)
 class AppConfig:
@@ -62,7 +53,8 @@ class AppConfig:
     activities: tuple[str, ...]
     locations: tuple[str, ...]
     details_suffixes: tuple[str, ...]
-
+    config_reload: bool = True
+    config_reload_interval: float = 2.0
 
 @dataclass
 class PresenceState:
@@ -73,9 +65,5 @@ class PresenceState:
     current_suffix: str = ""
     next_rotation: float = 0.0
     connected: bool = False
-    last_error: str = ""
-
-
-@dataclass(frozen=True)
-class PresencePayload:
-    data: dict[str, Any] = field(default_factory=dict)
+    last_payload_signature: str = ""
+    last_config_mtime_ns: int = 0
